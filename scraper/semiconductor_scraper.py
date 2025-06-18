@@ -1,6 +1,6 @@
 import csv
 import re
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from typing import List, Optional
 
 import requests
@@ -51,11 +51,20 @@ def extract_description(soup: BeautifulSoup) -> Optional[str]:
 
 @dataclass
 class CompanyInfo:
-    url: str
-    name: Optional[str] = None
+    """Container for a single company's data."""
+
+    company_name: Optional[str] = None
+    ticker: Optional[str] = None
+    location: Optional[str] = None
+    location_type: Optional[str] = None
+    sales: Optional[str] = None
+    sic: Optional[str] = None
+    url: str = ""
+    phone_number: Optional[str] = None
+    description: Optional[str] = None
     established: Optional[str] = None
     arizona_info: Optional[str] = None
-    description: Optional[str] = None
+    website_description: Optional[str] = None
     classification: Optional[str] = None
 
 
@@ -65,15 +74,30 @@ class SemiconductorScraper:
         self.companies: List[CompanyInfo] = []
 
     def load_companies(self):
-        """Load companies from a CSV file."""
+        """Load companies from a CSV file with flexible headers."""
         with open(self.input_csv, newline="", encoding="utf-8") as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
+                # Normalize common column names
+                url = (
+                    row.get("URL")
+                    or row.get("Url")
+                    or row.get("url")
+                    or ""
+                ).strip()
+                if not url:
+                    continue
                 self.companies.append(
                     CompanyInfo(
-                        url=row.get("url", "").strip(),
-                        name=row.get("name"),
-                        classification=row.get("classification"),
+                        company_name=row.get("Company Name") or row.get("name"),
+                        ticker=row.get("Ticker"),
+                        location=row.get("Location"),
+                        location_type=row.get("Location Type"),
+                        sales=row.get("Sales"),
+                        sic=row.get("SIC"),
+                        url=url,
+                        phone_number=row.get("Phone Number"),
+                        description=row.get("Description"),
                     )
                 )
 
@@ -85,27 +109,52 @@ class SemiconductorScraper:
                 continue
             soup = BeautifulSoup(html, "html.parser")
             text = soup.get_text(" ", strip=True)
-            if not company.name:
-                company.name = soup.title.string.strip() if soup.title else None
+            if not company.company_name:
+                company.company_name = (
+                    soup.title.string.strip() if soup.title else None
+                )
             company.established = extract_established_date(text)
             company.arizona_info = extract_arizona_info(text)
-            company.description = extract_description(soup)
+            company.website_description = extract_description(soup)
 
     def to_csv(self, output_csv: str):
         """Write scraped data to CSV."""
         fieldnames = [
-            "url",
-            "name",
-            "established",
-            "arizona_info",
-            "description",
-            "classification",
+            "Company Name",
+            "Ticker",
+            "Location",
+            "Location Type",
+            "Sales",
+            "SIC",
+            "URL",
+            "Phone Number",
+            "Description",
+            "Established",
+            "Arizona Info",
+            "Website Description",
+            "Classification",
         ]
         with open(output_csv, "w", newline="", encoding="utf-8") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             for company in self.companies:
-                writer.writerow(asdict(company))
+                writer.writerow(
+                    {
+                        "Company Name": company.company_name,
+                        "Ticker": company.ticker,
+                        "Location": company.location,
+                        "Location Type": company.location_type,
+                        "Sales": company.sales,
+                        "SIC": company.sic,
+                        "URL": company.url,
+                        "Phone Number": company.phone_number,
+                        "Description": company.description,
+                        "Established": company.established,
+                        "Arizona Info": company.arizona_info,
+                        "Website Description": company.website_description,
+                        "Classification": company.classification,
+                    }
+                )
 
 
 if __name__ == "__main__":
