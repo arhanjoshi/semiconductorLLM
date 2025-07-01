@@ -16,6 +16,9 @@ requests with exponential backoff.
 
 The scraping logic uses Python's standard library and `BeautifulSoup` with heuristic text searches. If key details are missing from the home page, the scraper looks for an "About" or "History" link and scrapes that page as well. Results are written to a new CSV file.
 
+The scraping logic uses `requests` and `BeautifulSoup` with heuristic text searches. Results are written to a new CSV file.
+
+
 ## Usage
 
 1. Install dependencies:
@@ -34,6 +37,10 @@ pip install -r requirements.txt
 
 ```bash
 python scraper/semiconductor_scraper.py "D&BSemiList_ArhanJoshi_Edited.csv" output_full.csv
+3. Run the scraper:
+
+```bash
+python -m scraper.semiconductor_scraper sample_companies_extended.csv output.csv
 ```
 
 The output CSV will contain the extracted fields for each company.

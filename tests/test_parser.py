@@ -12,6 +12,7 @@ except ImportError:  # pragma: no cover - BeautifulSoup may not be available
     BeautifulSoup = None
 
 
+
 class TestParsers(unittest.TestCase):
     def test_extract_established_date(self):
         text = "Acme Semiconductor was Founded in 1999 and is headquartered in Arizona."

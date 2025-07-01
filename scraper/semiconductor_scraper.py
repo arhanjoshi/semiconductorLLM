@@ -36,6 +36,8 @@ def fetch_page(url: str, headers: Optional[dict] = None, retries: int = 3) -> Op
             time.sleep(delay)
             delay *= 2
     return None
+import requests
+from bs4 import BeautifulSoup
 
 
 def extract_established_date(text: str) -> Optional[str]:
@@ -172,6 +174,7 @@ def classify_supply_chain(text: str) -> Optional[str]:
     return None
 
 
+
 @dataclass
 class CompanyInfo:
     """Container for a single company's data."""
@@ -227,6 +230,7 @@ class SemiconductorScraper:
     def scrape(self):
         """Scrape all company websites."""
         for company in tqdm(self.companies, desc="Scraping companies"):
+        for company in self.companies:
             html = fetch_page(company.url)
             if not html:
                 continue
@@ -267,6 +271,7 @@ class SemiconductorScraper:
                             company.website_description = extract_description(about_soup)
                         if not company.classification:
                             company.classification = classify_supply_chain(about_text)
+
 
     def to_csv(self, output_csv: str):
         """Write scraped data to CSV."""
