@@ -8,7 +8,16 @@ This project provides a simple scraper for collecting information about semicond
 - Company description
 - Classification in the semiconductor supply chain
 
+The helper `classify_supply_chain` assigns roles such as Foundry, IDM, or
+Equipment based on keywords it finds in the page text.
+
+The scraper shows progress with a `tqdm` progress bar and retries failed HTTP
+requests with exponential backoff.
+
+The scraping logic uses Python's standard library and `BeautifulSoup` with heuristic text searches. If key details are missing from the home page, the scraper looks for an "About" or "History" link and scrapes that page as well. Results are written to a new CSV file.
+
 The scraping logic uses `requests` and `BeautifulSoup` with heuristic text searches. Results are written to a new CSV file.
+
 
 ## Usage
 
@@ -23,6 +32,11 @@ pip install -r requirements.txt
    `Description`. See `sample_companies_extended.csv` for an example. Legacy
    files with a simple `url` column are also supported.
 
+3. Run the scraper from the project root. For example, to scrape the
+   provided `D&BSemiList_ArhanJoshi_Edited.csv` file:
+
+```bash
+python scraper/semiconductor_scraper.py "D&BSemiList_ArhanJoshi_Edited.csv" output_full.csv
 3. Run the scraper:
 
 ```bash
