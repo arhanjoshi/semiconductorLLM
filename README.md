@@ -12,12 +12,11 @@ The helper `classify_supply_chain` assigns roles such as Foundry, IDM, or
 Equipment based on keywords it finds in the page text.
 
 The scraper shows progress with a `tqdm` progress bar and retries failed HTTP
-requests with exponential backoff.
+requests with exponential backoff. When loading company data, any URL that lacks
+an explicit scheme is automatically prefixed with `https://` so that pages can be
+fetched correctly.
 
 The scraping logic uses Python's standard library and `BeautifulSoup` with heuristic text searches. If key details are missing from the home page, the scraper looks for an "About" or "History" link and scrapes that page as well. Results are written to a new CSV file.
-
-The scraping logic uses `requests` and `BeautifulSoup` with heuristic text searches. Results are written to a new CSV file.
-
 
 ## Usage
 

@@ -40,6 +40,7 @@ def fetch_page(url: str, headers: Optional[dict] = None, retries: int = 3) -> Op
 
 def extract_established_date(text: str) -> Optional[str]:
     """Attempt to extract the established date from text."""
+    # Look for patterns like 'Founded in 1998' or 'Established: 2001'
     match = re.search(r"(Founded|Established)[^\d]*(\d{4})", text, re.IGNORECASE)
     if match:
         return match.group(2)
@@ -85,12 +86,47 @@ def find_about_or_history_link(soup: BeautifulSoup, company_name: str) -> Option
 
 
 INFO_KEYWORDS = [
-    "about", "about-us", "aboutus", "company", "profile", "overview", "corporate",
-    "company-info", "company-profile", "company-overview", "who-we-are", "our-story",
-    "story", "journey", "legacy", "history", "our-history", "milestones", "timeline",
-    "mission", "vision", "values", "fact-sheet", "facts", "at-a-glance",
-    "leadership", "management-team", "executives", "investor-relations",
-    "ir/company-profile", "sustainability", "csr", "esg"
+    # about / company
+    "about",
+    "about-us",
+    "aboutus",
+    "company",
+    "profile",
+    "overview",
+    "corporate",
+    "company-info",
+    "company-profile",
+    "company-overview",
+    # story / who-we-are
+    "who-we-are",
+    "our-story",
+    "story",
+    "journey",
+    "legacy",
+    # history / timeline
+    "history",
+    "our-history",
+    "milestones",
+    "timeline",
+    # mission / values
+    "mission",
+    "vision",
+    "values",
+    # fast facts
+    "fact-sheet",
+    "facts",
+    "at-a-glance",
+    # leadership pages (often re-state profile)
+    "leadership",
+    "management-team",
+    "executives",
+    # investor pages that include profile
+    "investor-relations",
+    "ir/company-profile",
+    # ESG pages that open with profile
+    "sustainability",
+    "csr",
+    "esg",
 ]
 
 def find_info_page(base_url: str, soup: BeautifulSoup) -> Optional[str]:
@@ -101,18 +137,29 @@ def find_info_page(base_url: str, soup: BeautifulSoup) -> Optional[str]:
         href_lc = href.lower()
         text_lc = a.get_text(" ", strip=True).lower()
         if any(kw in href_lc for kw in INFO_KEYWORDS):
-            score = 0
+            score = 0  # perfect match in slug
         elif any(kw in text_lc for kw in INFO_KEYWORDS):
-            score = 1
+            score = 1  # match only in anchor text
         else:
             continue
         depth = href_lc.count("/")
         candidates.append((score, depth, href))
+<<<<<<< qwdaxh-codex/create-web-scraper-for-semiconductor-data
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda t: (t[0], t[1]))
+    return urljoin(base_url, candidates[0][2])
+
+
+=======
     if not candidates:
         return None
     candidates.sort(key=lambda t: (t[0], t[1]))
     return urljoin(base_url, candidates[0][2])
 
+>>>>>>> main
 def classify_supply_chain(text: str) -> Optional[str]:
     """Identify the company's role in the semiconductor supply chain."""
     mapping = {
@@ -130,8 +177,11 @@ def classify_supply_chain(text: str) -> Optional[str]:
             return role
     return None
 
+
 @dataclass
 class CompanyInfo:
+    """Container for a single company's data."""
+    
     company_name: Optional[str] = None
     ticker: Optional[str] = None
     location: Optional[str] = None
@@ -146,18 +196,31 @@ class CompanyInfo:
     website_description: Optional[str] = None
     classification: Optional[str] = None
 
+
 class SemiconductorScraper:
     def __init__(self, input_csv: str):
         self.input_csv = input_csv
         self.companies: List[CompanyInfo] = []
 
     def load_companies(self):
+        """Load companies from a CSV file with flexible headers."""
         with open(self.input_csv, newline="", encoding="utf-8") as csvfile:
             reader = csv.DictReader(csvfile)
             for row in reader:
-                url = (row.get("URL") or row.get("Url") or row.get("url") or "").strip()
-                if not url:
+                # Normalize common column names
+                raw = (
+                    row.get("URL")
+                    or row.get("Url")
+                    or row.get("url")
+                    or ""
+                ).strip()
+                if not raw:
                     continue
+                if raw.lower().startswith(("http://", "https://")):
+                    url = raw
+                else:
+                    url = "https://" + raw
+
                 self.companies.append(
                     CompanyInfo(
                         company_name=row.get("Company Name") or row.get("name"),
@@ -173,6 +236,8 @@ class SemiconductorScraper:
                 )
 
     def scrape(self):
+        """Scrape all company websites."""
+
         for company in tqdm(self.companies, desc="Scraping companies"):
             html = fetch_page(company.url)
             if not html:
@@ -180,6 +245,7 @@ class SemiconductorScraper:
             soup = BeautifulSoup(html, "html.parser")
             text = soup.get_text(" ", strip=True)
 
+            # Prefer an information page if available
             info_url = find_info_page(company.url, soup)
             if info_url:
                 info_html = fetch_page(info_url)
@@ -188,11 +254,15 @@ class SemiconductorScraper:
                     text = soup.get_text(" ", strip=True)
 
             if not company.company_name:
-                company.company_name = soup.title.string.strip() if soup.title else None
+                company.company_name = (
+                    soup.title.string.strip() if soup.title else None
+                )
             company.established = extract_established_date(text)
             company.arizona_info = extract_arizona_info(text)
             company.website_description = extract_description(soup)
             company.classification = classify_supply_chain(text)
+
+            # If key information is missing, try to locate an info page or about/history page
 
             if not all([company.established, company.arizona_info, company.website_description]):
                 link = find_about_or_history_link(soup, company.company_name or "")
@@ -212,30 +282,45 @@ class SemiconductorScraper:
                             company.classification = classify_supply_chain(about_text)
 
     def to_csv(self, output_csv: str):
+        """Write scraped data to CSV."""
         fieldnames = [
-            "Company Name", "Ticker", "Location", "Location Type", "Sales", "SIC", "URL",
-            "Phone Number", "Description", "Established", "Arizona Info", "Website Description",
+            "Company Name",
+            "Ticker",
+            "Location",
+            "Location Type",
+            "Sales",
+            "SIC",
+            "URL",
+            "Phone Number",
+            "Description",
+            "Established",
+            "Arizona Info",
+            "Website Description",
+
             "Classification",
         ]
         with open(output_csv, "w", newline="", encoding="utf-8") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             for company in self.companies:
-                writer.writerow({
-                    "Company Name": company.company_name,
-                    "Ticker": company.ticker,
-                    "Location": company.location,
-                    "Location Type": company.location_type,
-                    "Sales": company.sales,
-                    "SIC": company.sic,
-                    "URL": company.url,
-                    "Phone Number": company.phone_number,
-                    "Description": company.description,
-                    "Established": company.established,
-                    "Arizona Info": company.arizona_info,
-                    "Website Description": company.website_description,
-                    "Classification": company.classification,
-                })
+                writer.writerow(
+                    {
+                        "Company Name": company.company_name,
+                        "Ticker": company.ticker,
+                        "Location": company.location,
+                        "Location Type": company.location_type,
+                        "Sales": company.sales,
+                        "SIC": company.sic,
+                        "URL": company.url,
+                        "Phone Number": company.phone_number,
+                        "Description": company.description,
+                        "Established": company.established,
+                        "Arizona Info": company.arizona_info,
+                        "Website Description": company.website_description,
+                        "Classification": company.classification,
+                    }
+                )
+
 
 if __name__ == "__main__":
     import argparse

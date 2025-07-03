@@ -27,6 +27,25 @@ class TestLoadCompanies(unittest.TestCase):
         self.assertEqual(company.ticker, "TST")
         self.assertEqual(company.url, "http://example.com")
 
+    def test_adds_scheme_to_url(self):
+        rows = [
+            {
+                "Company Name": "No Scheme Inc",
+                "URL": "example.org",
+            }
+        ]
+        with tempfile.NamedTemporaryFile("w", newline="", delete=False) as tmp:
+            writer = csv.DictWriter(tmp, fieldnames=rows[0].keys())
+            writer.writeheader()
+            writer.writerows(rows)
+            tmp_name = tmp.name
+
+        scraper = SemiconductorScraper(tmp_name)
+        scraper.load_companies()
+        self.assertEqual(len(scraper.companies), 1)
+        company = scraper.companies[0]
+        self.assertEqual(company.url, "https://example.org")
+
 
 if __name__ == "__main__":
     unittest.main()
