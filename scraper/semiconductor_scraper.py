@@ -80,7 +80,6 @@ def find_about_or_history_link(soup: BeautifulSoup, company_name: str) -> Option
         for kw in link_keywords:
             if kw in href or kw in text:
                 if kw == "about" and texts and not any(t in text for t in texts):
-                    # If searching for About page and company name is known, ensure it's relevant
                     continue
                 return a["href"]
     return None
@@ -130,7 +129,6 @@ INFO_KEYWORDS = [
     "esg",
 ]
 
-
 def find_info_page(base_url: str, soup: BeautifulSoup) -> Optional[str]:
     """Return the best candidate 'info' page URL."""
     candidates = []
@@ -146,6 +144,7 @@ def find_info_page(base_url: str, soup: BeautifulSoup) -> Optional[str]:
             continue
         depth = href_lc.count("/")
         candidates.append((score, depth, href))
+<<<<<<< qwdaxh-codex/create-web-scraper-for-semiconductor-data
 
     if not candidates:
         return None
@@ -154,6 +153,13 @@ def find_info_page(base_url: str, soup: BeautifulSoup) -> Optional[str]:
     return urljoin(base_url, candidates[0][2])
 
 
+=======
+    if not candidates:
+        return None
+    candidates.sort(key=lambda t: (t[0], t[1]))
+    return urljoin(base_url, candidates[0][2])
+
+>>>>>>> main
 def classify_supply_chain(text: str) -> Optional[str]:
     """Identify the company's role in the semiconductor supply chain."""
     mapping = {
@@ -175,7 +181,7 @@ def classify_supply_chain(text: str) -> Optional[str]:
 @dataclass
 class CompanyInfo:
     """Container for a single company's data."""
-
+    
     company_name: Optional[str] = None
     ticker: Optional[str] = None
     location: Optional[str] = None
@@ -214,6 +220,7 @@ class SemiconductorScraper:
                     url = raw
                 else:
                     url = "https://" + raw
+
                 self.companies.append(
                     CompanyInfo(
                         company_name=row.get("Company Name") or row.get("name"),
@@ -230,6 +237,7 @@ class SemiconductorScraper:
 
     def scrape(self):
         """Scrape all company websites."""
+
         for company in tqdm(self.companies, desc="Scraping companies"):
             html = fetch_page(company.url)
             if not html:
@@ -255,6 +263,7 @@ class SemiconductorScraper:
             company.classification = classify_supply_chain(text)
 
             # If key information is missing, try to locate an info page or about/history page
+
             if not all([company.established, company.arizona_info, company.website_description]):
                 link = find_about_or_history_link(soup, company.company_name or "")
                 if link:
@@ -287,6 +296,7 @@ class SemiconductorScraper:
             "Established",
             "Arizona Info",
             "Website Description",
+
             "Classification",
         ]
         with open(output_csv, "w", newline="", encoding="utf-8") as csvfile:

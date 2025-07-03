@@ -1,2 +1,6 @@
 beautifulsoup4
 tqdm
+
+requests
+beautifulsoup4
+pandas
