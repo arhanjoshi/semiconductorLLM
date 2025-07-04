@@ -29,8 +29,11 @@ def fetch_page(url: str, headers: Optional[dict] = None, retries: int = 3) -> Op
         try:
             req = Request(url, headers=headers or {"User-Agent": "Mozilla/5.0"})
             with urlopen(req, timeout=10) as resp:
-                return resp.read().decode("utf-8", errors="ignore")
-        except (HTTPError, URLError, ValueError):
+                html = resp.read().decode("utf-8", errors="ignore")
+                print(f"[DEBUG] fetch_page: {url} → {len(html)} bytes")
+                return html
+        except (HTTPError, URLError, ValueError) as e:
+            print(f"[WARN] fetch_page error on {url}: {e!r} (attempt {attempt+1})")
             if attempt == retries - 1:
                 return None
             time.sleep(delay)
@@ -40,8 +43,9 @@ def fetch_page(url: str, headers: Optional[dict] = None, retries: int = 3) -> Op
 
 def extract_established_date(text: str) -> Optional[str]:
     """Attempt to extract the established date from text."""
-    # Look for patterns like 'Founded in 1998' or 'Established: 2001'
-    match = re.search(r"(Founded|Established)[^\d]*(\d{4})", text, re.IGNORECASE)
+    # Look for patterns like 'Founded in 1998', 'Established 2001', or 'Since 1987'
+    match = re.search(r"(Founded|Established|Since)[^\d]*(\d{4})", text, re.IGNORECASE)
+
     if match:
         return match.group(2)
     year_match = re.search(r"\b(19|20)\d{2}\b", text)
@@ -61,7 +65,12 @@ def extract_arizona_info(text: str) -> Optional[str]:
 
 def extract_description(soup: BeautifulSoup) -> Optional[str]:
     """Get meta description or first paragraph."""
-    meta = soup.find("meta", {"name": "description"})
+    meta = (
+        soup.find("meta", {"name": "description"})
+        or soup.find("meta", {"property": "og:description"})
+        or soup.find("meta", {"name": "twitter:description"})
+    )
+
     if meta and meta.get("content"):
         return meta["content"].strip()
     p = soup.find("p")
@@ -80,6 +89,7 @@ def find_about_or_history_link(soup: BeautifulSoup, company_name: str) -> Option
         for kw in link_keywords:
             if kw in href or kw in text:
                 if kw == "about" and texts and not any(t in text for t in texts):
+                    # If searching for About page and company name is known, ensure it's relevant
                     continue
                 return a["href"]
     return None
@@ -129,6 +139,7 @@ INFO_KEYWORDS = [
     "esg",
 ]
 
+
 def find_info_page(base_url: str, soup: BeautifulSoup) -> Optional[str]:
     """Return the best candidate 'info' page URL."""
     candidates = []
@@ -144,7 +155,7 @@ def find_info_page(base_url: str, soup: BeautifulSoup) -> Optional[str]:
             continue
         depth = href_lc.count("/")
         candidates.append((score, depth, href))
-<<<<<<< qwdaxh-codex/create-web-scraper-for-semiconductor-data
+
 
     if not candidates:
         return None
@@ -153,13 +164,13 @@ def find_info_page(base_url: str, soup: BeautifulSoup) -> Optional[str]:
     return urljoin(base_url, candidates[0][2])
 
 
-=======
+
     if not candidates:
         return None
     candidates.sort(key=lambda t: (t[0], t[1]))
     return urljoin(base_url, candidates[0][2])
 
->>>>>>> main
+
 def classify_supply_chain(text: str) -> Optional[str]:
     """Identify the company's role in the semiconductor supply chain."""
     mapping = {
@@ -181,7 +192,7 @@ def classify_supply_chain(text: str) -> Optional[str]:
 @dataclass
 class CompanyInfo:
     """Container for a single company's data."""
-    
+
     company_name: Optional[str] = None
     ticker: Optional[str] = None
     location: Optional[str] = None
@@ -205,7 +216,11 @@ class SemiconductorScraper:
     def load_companies(self):
         """Load companies from a CSV file with flexible headers."""
         with open(self.input_csv, newline="", encoding="utf-8") as csvfile:
-            reader = csv.DictReader(csvfile)
+            sample = csvfile.read(1024)
+            csvfile.seek(0)
+            delimiter = "\t" if "\t" in sample else ","
+            reader = csv.DictReader(csvfile, delimiter=delimiter)
+
             for row in reader:
                 # Normalize common column names
                 raw = (
@@ -237,10 +252,10 @@ class SemiconductorScraper:
 
     def scrape(self):
         """Scrape all company websites."""
-
         for company in tqdm(self.companies, desc="Scraping companies"):
             html = fetch_page(company.url)
             if not html:
+                print(f"[WARN] No HTML for {company.url}")
                 continue
             soup = BeautifulSoup(html, "html.parser")
             text = soup.get_text(" ", strip=True)
@@ -296,7 +311,6 @@ class SemiconductorScraper:
             "Established",
             "Arizona Info",
             "Website Description",
-
             "Classification",
         ]
         with open(output_csv, "w", newline="", encoding="utf-8") as csvfile:

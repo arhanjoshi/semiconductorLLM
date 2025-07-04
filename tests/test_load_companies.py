@@ -46,6 +46,24 @@ class TestLoadCompanies(unittest.TestCase):
         company = scraper.companies[0]
         self.assertEqual(company.url, "https://example.org")
 
+    def test_tab_delimited(self):
+        rows = [
+            {
+                "Company Name": "Tabbed Co",
+                "URL": "tabbed.com",
+            }
+        ]
+        with tempfile.NamedTemporaryFile("w", newline="", delete=False) as tmp:
+            writer = csv.DictWriter(tmp, fieldnames=rows[0].keys(), delimiter="\t")
+            writer.writeheader()
+            writer.writerows(rows)
+            tmp_name = tmp.name
+
+        scraper = SemiconductorScraper(tmp_name)
+        scraper.load_companies()
+        self.assertEqual(len(scraper.companies), 1)
+        self.assertEqual(scraper.companies[0].url, "https://tabbed.com")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -28,14 +28,22 @@ pip install -r requirements.txt
 
 2. Prepare an input CSV describing each company. The scraper understands the
    extended format with columns like `Company Name`, `Ticker`, `URL`, and
-   `Description`. See `sample_companies_extended.csv` for an example. Legacy
-   files with a simple `url` column are also supported.
+   `Description`. Delimiters of either commas or tabs are detected
+   automatically, so the file may use either style. See
+   `sample_companies_extended.csv` for an example. Legacy files with a simple
+   `url` column are also supported.
+
+   The scraper fetches live HTML from the listed websites, so make sure the
+   environment has network access. If run without internet connectivity, each
+   request will log warnings and no data will be extracted.
+
 
 3. Run the scraper from the project root. For example, to scrape the
    provided `D&BSemiList_ArhanJoshi_Edited.csv` file:
 
 ```bash
 python scraper/semiconductor_scraper.py "D&BSemiList_ArhanJoshi_Edited.csv" output_full.csv
+
 3. Run the scraper:
 
 ```bash
@@ -51,3 +59,13 @@ Basic parser tests can be run with:
 ```bash
 python -m unittest discover tests
 ```
+
+## Sanity check
+
+To verify that network access works and `fetch_page` returns HTML, run:
+
+```bash
+python sanity_check.py
+```
+
+This script fetches a sample page and prints the first few characters of HTML.
