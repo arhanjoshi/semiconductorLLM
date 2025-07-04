@@ -45,6 +45,7 @@ def extract_established_date(text: str) -> Optional[str]:
     """Attempt to extract the established date from text."""
     # Look for patterns like 'Founded in 1998', 'Established 2001', or 'Since 1987'
     match = re.search(r"(Founded|Established|Since)[^\d]*(\d{4})", text, re.IGNORECASE)
+
     if match:
         return match.group(2)
     year_match = re.search(r"\b(19|20)\d{2}\b", text)
@@ -69,6 +70,7 @@ def extract_description(soup: BeautifulSoup) -> Optional[str]:
         or soup.find("meta", {"property": "og:description"})
         or soup.find("meta", {"name": "twitter:description"})
     )
+
     if meta and meta.get("content"):
         return meta["content"].strip()
     p = soup.find("p")
@@ -154,9 +156,17 @@ def find_info_page(base_url: str, soup: BeautifulSoup) -> Optional[str]:
         depth = href_lc.count("/")
         candidates.append((score, depth, href))
 
+
     if not candidates:
         return None
 
+    candidates.sort(key=lambda t: (t[0], t[1]))
+    return urljoin(base_url, candidates[0][2])
+
+
+
+    if not candidates:
+        return None
     candidates.sort(key=lambda t: (t[0], t[1]))
     return urljoin(base_url, candidates[0][2])
 
@@ -210,6 +220,7 @@ class SemiconductorScraper:
             csvfile.seek(0)
             delimiter = "\t" if "\t" in sample else ","
             reader = csv.DictReader(csvfile, delimiter=delimiter)
+
             for row in reader:
                 # Normalize common column names
                 raw = (
@@ -224,6 +235,7 @@ class SemiconductorScraper:
                     url = raw
                 else:
                     url = "https://" + raw
+
                 self.companies.append(
                     CompanyInfo(
                         company_name=row.get("Company Name") or row.get("name"),
@@ -266,6 +278,7 @@ class SemiconductorScraper:
             company.classification = classify_supply_chain(text)
 
             # If key information is missing, try to locate an info page or about/history page
+
             if not all([company.established, company.arizona_info, company.website_description]):
                 link = find_about_or_history_link(soup, company.company_name or "")
                 if link:

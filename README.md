@@ -37,11 +37,17 @@ pip install -r requirements.txt
    environment has network access. If run without internet connectivity, each
    request will log warnings and no data will be extracted.
 
+
 3. Run the scraper from the project root. For example, to scrape the
    provided `D&BSemiList_ArhanJoshi_Edited.csv` file:
 
 ```bash
 python scraper/semiconductor_scraper.py "D&BSemiList_ArhanJoshi_Edited.csv" output_full.csv
+
+3. Run the scraper:
+
+```bash
+python -m scraper.semiconductor_scraper sample_companies_extended.csv output.csv
 ```
 
 The output CSV will contain the extracted fields for each company.
